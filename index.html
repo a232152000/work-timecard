@@ -11,38 +11,69 @@
     const LIFF_ID = "2008152857-OWRgNdDE";              // ← 換成你的 LIFF ID
     const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzKfPB1TrAxjH0fs9FX-VcgnWBkfv5iceuWZH_bAURpzVx6qkhjf3q122_BheSrR1Ls/exec?token=test1106";    // ← 部署好的 Apps Script /exec
 
-    const log = (...a) => (document.getElementById('log').textContent += a.join(' ') + '\n');
+    const log = (...a) =>
+  (document.getElementById('log').textContent += a.join(' ') + '\n');
 
-    async function init() {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) liff.login();
-        log("LIFF ready.");
+(async function init() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+
+    // 沒登入就導去 LINE Login，並要求 openid/profile，回來後再繼續
+    if (!liff.isLoggedIn()) {
+      liff.login({
+        scope: ['openid', 'profile'],
+        redirectUri: location.href
+      });
+      return; // 這次呼叫會中止，等回跳後重新執行
     }
 
-    async function checkIn() {
-        try {
-            // 取 userId（建議用 decoded ID token 的 sub）
-            const decoded = liff.getDecodedIDToken(); // 需 liff.init 完成後可用
-            if (!decoded || !decoded.sub) {
-                log("無法取得使用者 ID（sub）");
-                return;
-            }
-            const userId = decoded.sub;
+    log('LIFF ready. inClient=', liff.isInClient(), ' os=', liff.getOS());
+  } catch (e) {
+    log('init error:', e.message || e);
+  }
+})();
 
-            // POST 到 GAS，請 GAS 以伺服器時間寫入
-            const res = await fetch(GAS_ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId })
-            });
-            const text = await res.text();
-            log("GAS 回應：", text);
-        } catch (e) {
-            log("錯誤：", e.message || e);
-        }
+async function resolveUserId() {
+  // 優先用 getProfile()（需要 profile scope）
+  try {
+    const prof = await liff.getProfile();  // 在外部瀏覽器登入後也可用
+    if (prof && prof.userId) return prof.userId;
+  } catch (e) {
+    // 忽略，改走備援
+  }
+
+  // 備援：用 ID Token 的 sub（需要 openid scope）
+  try {
+    const decoded = liff.getDecodedIDToken();
+    if (decoded && decoded.sub) return decoded.sub;
+  } catch (e) {
+    // 忽略
+  }
+
+  return null;
+}
+
+async function checkIn() {
+  try {
+    const userId = await resolveUserId();
+    if (!userId) {
+      log('無法取得使用者 ID（請確認已登入且 LIFF scope 含 openid/profile）');
+      return;
     }
 
-    document.getElementById('checkin').addEventListener('click', checkIn);
-    init();
+    // POST 到 GAS，由 GAS 以伺服器時間寫入
+    const res = await fetch(GAS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId })
+    });
+    const text = await res.text();
+    log("GAS 回應：", text);
+  } catch (e) {
+    log("錯誤：", e.message || e);
+  }
+}
+
+document.getElementById('checkin').addEventListener('click', checkIn);
 </script>
 </body>
