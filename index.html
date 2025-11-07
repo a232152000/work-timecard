@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>LIFF Check-in</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<body>
+<h3>Check-in</h3>
+<button id="checkin">寫入今天時間</button>
+<pre id="log"></pre>
+
+<script>
+    const LIFF_ID = "YOUR_LIFF_ID";              // ← 換成你的 LIFF ID
+    const GAS_ENDPOINT = "YOUR_GAS_EXEC_URL";    // ← 部署好的 Apps Script /exec
+
+    const log = (...a) => (document.getElementById('log').textContent += a.join(' ') + '\n');
+
+    async function init() {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) liff.login();
+        log("LIFF ready.");
+    }
+
+    async function checkIn() {
+        try {
+            // 取 userId（建議用 decoded ID token 的 sub）
+            const decoded = liff.getDecodedIDToken(); // 需 liff.init 完成後可用
+            if (!decoded || !decoded.sub) {
+                log("無法取得使用者 ID（sub）");
+                return;
+            }
+            const userId = decoded.sub;
+
+            // POST 到 GAS，請 GAS 以伺服器時間寫入
+            const res = await fetch(GAS_ENDPOINT, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId })
+            });
+            const text = await res.text();
+            log("GAS 回應：", text);
+        } catch (e) {
+            log("錯誤：", e.message || e);
+        }
+    }
+
+    document.getElementById('checkin').addEventListener('click', checkIn);
+    init();
+</script>
+</body>
