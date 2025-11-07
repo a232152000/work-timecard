@@ -9,7 +9,7 @@
 
 <script>
     const LIFF_ID = "2008152857-OWRgNdDE";              // ← 換成你的 LIFF ID
-    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzKfPB1TrAxjH0fs9FX-VcgnWBkfv5iceuWZH_bAURpzVx6qkhjf3q122_BheSrR1Ls/exec?token=test1106";    // ← 部署好的 Apps Script /exec
+    const GAS_EXEC = "https://script.google.com/macros/s/AKfycbzKfPB1TrAxjH0fs9FX-VcgnWBkfv5iceuWZH_bAURpzVx6qkhjf3q122_BheSrR1Ls/exec?token=test1106";    // ← 部署好的 Apps Script /exec
 
     const TOKEN = "test1106";
 
@@ -41,7 +41,7 @@ async function checkIn() {
     return;
   }
   // 用 <img> beacon 送 GET（避免 CORS；不會跳頁）
-  const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&user=${encodeURIComponent(userId)}&_=${Date.now()}`;
+  const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
   const img = new Image();
   img.onload = img.onerror = () => log('已送出（不讀回應）');
   img.src = url;
