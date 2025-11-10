@@ -155,7 +155,8 @@
     </footer>
   </div>
 
-  <script>
+  <!-- ✅ 使用 module，可安全使用 await -->
+  <script type="module">
     const LIFF_ID = "2008152857-OWRgNdDE";
     const GAS_EXEC = "https://script.google.com/macros/s/AKfycbwXaP-SUcDzKinUNZi88D8N2YEOt-2J5CuAyzeVySZcN175_Q2LJ35D6Tpir4AoInsQ/exec";
     const TOKEN = "test1106";
@@ -172,10 +173,6 @@
     const displayName = $('#displayName');
     const uid = $('#uid');
 
-    function log(...args) {
-      logEl.textContent += `\n${new Date().toLocaleString()} ${args.join(' ')}`;
-      logEl.scrollTop = logEl.scrollHeight;
-    }
     function setChip(el, text, kind) {
       el.textContent = text;
       el.className = `chip ${kind || ''}`;
@@ -194,7 +191,6 @@
         }
       } catch (e) {
         setChip(liffState, 'LIFF 失敗', 'err');
-        log('LIFF 初始化失敗:', e.message);
       }
     })();
 
@@ -207,9 +203,7 @@
           uid.textContent = p.userId.slice(0, 4) + '…' + p.userId.slice(-4);
           profileBox.hidden = false;
         }
-      } catch (e) {
-        log('讀取使用者資料失敗:', e.message);
-      }
+      } catch {}
     }
 
     async function getUserId() {
@@ -221,16 +215,15 @@
       }
     }
 
-    // ✅ 修正版：Beacon 為主、fetch(no-cors) 補充紀錄
+    // ✅ 使用者版：僅顯示處理中、成功與時間
     async function checkIn() {
       btnCheck.disabled = true;
-      // 顯示處理中...
       setChip(lastResult, '處理中…', 'warn');
       logEl.textContent = `${new Date().toLocaleString()} 處理中…`;
 
       const userId = await getUserId();
       if (!userId) {
-        setChip(lastResult, '未取得 userId', 'err');
+        setChip(lastResult, '打卡失敗', 'err');
         logEl.textContent = `${new Date().toLocaleString()} 打卡失敗，請重新開啟頁面再試`;
         btnCheck.disabled = false;
         return;
@@ -238,7 +231,6 @@
 
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
 
-      // 僅用 <img> beacon，成功即顯示打卡成功 + 時間；不顯示技術性訊息
       const img = new Image();
       img.onload = () => {
         const ts = new Date();
@@ -251,42 +243,6 @@
         logEl.textContent = `${ts.toLocaleString()} 打卡失敗，請稍後重試`;
       };
       img.src = url;
-
-      setTimeout(() => (btnCheck.disabled = false), 600);
-    }
-
-      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
-      log('→ 呼叫 /exec:', url);
-
-      // 方案A：<img> beacon（不讀回應），可避開 ORB；onload 視為成功。
-      let settled = false;
-      const img = new Image();
-      img.onload = () => {
-        settled = true;
-        log('✔ Beacon onload（視為打卡成功）');
-        setChip(lastResult, '打卡成功', 'ok');
-      };
-      img.onerror = () => {
-        if (!settled) {
-          log('⚠ Beacon onerror');
-          setChip(lastResult, '傳送失敗', 'err');
-        }
-      };
-      img.src = url;
-
-      // 方案B：fetch(no-cors) 僅做背景補充紀錄（可能被 ORB 隱藏回應）
-      try {
-        await fetch(url, {
-          method: 'GET',
-          mode: 'no-cors',
-          cache: 'no-store',
-          redirect: 'follow',
-          credentials: 'omit',
-        });
-        log('ℹ︎ fetch(no-cors) 已送出（回應可能被 ORB 隱藏）');
-      } catch (err) {
-        log('ℹ︎ fetch 可能被 ORB 攔截：', err?.message || err);
-      }
 
       setTimeout(() => (btnCheck.disabled = false), 600);
     }
