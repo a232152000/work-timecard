@@ -26,7 +26,7 @@
       background: radial-gradient(1200px 600px at 10% -10%, #1a2452 0%, transparent 50%),
                   radial-gradient(800px 400px at 110% 10%, #1a2452 0%, transparent 50%), var(--bg);
       color: var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", Arial;
+      font-family: "Noto Sans TC", system-ui, sans-serif;
       display: grid;
       place-items: center;
       padding: 32px;
@@ -54,14 +54,12 @@
       display: grid;
       place-items: center;
       background: linear-gradient(135deg, var(--brand), var(--brand-2));
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
       font-weight: 800;
       color: #fff;
     }
     .title { flex: 1; }
     .title h1 { margin: 0; font-size: 18px; }
     .title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-    .status { display: flex; gap: 8px; align-items: center; }
     .chip { font-size: 12px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.04); }
     .chip.ok { border-color: rgba(46,204,113,.35); color: var(--ok); }
     .chip.warn { border-color: rgba(243,156,18,.35); color: var(--warn); }
@@ -75,14 +73,7 @@
       display: grid;
       gap: 12px;
     }
-    .profile { display: flex; gap: 12px; align-items: center; }
-    .profile img { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); object-fit: cover; }
-    .profile .who { line-height: 1.25; }
-    .profile .who .name { font-weight: 600; }
-    .profile .who .uid { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn {
-      appearance: none;
       border: 1px solid var(--brand);
       background: linear-gradient(180deg, var(--brand), var(--brand-2));
       color: #fff;
@@ -90,32 +81,18 @@
       border-radius: 12px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 6px 16px rgba(93,124,255,.35);
-      transition: transform .06s ease;
     }
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn[disabled] { opacity: .6; cursor: not-allowed; box-shadow: none; }
-    .btn.secondary { background: transparent; color: var(--brand); border-color: var(--brand); box-shadow: none; }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
     .log {
       background: #070b1a;
       color: #e6edf7;
       border-radius: 10px;
       padding: 12px;
-      height: 280px;
+      height: 180px;
       overflow: auto;
       border: 1px solid #121a30;
       font-family: ui-monospace, monospace;
       font-size: 13px;
-    }
-    footer {
-      padding: 12px 16px 18px;
-      color: var(--muted);
-      font-size: 12px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
     }
   </style>
 </head>
@@ -127,95 +104,59 @@
         <h1>專屬打卡系統</h1>
         <p>到公司了還不立馬打卡，必須打起來！</p>
       </div>
-      <div class="status">
-        <span id="liffState" class="chip warn">未初始化</span>
-        <span id="loginState" class="chip warn">未打卡</span>
-      </div>
+      <span id="liffState" class="chip warn">未初始化</span>
     </header>
 
     <main>
       <section class="card">
-        <div class="profile" id="profile" hidden>
-          <img id="avatar" alt="avatar" />
-          <div class="who">
-            <div class="name" id="displayName">—</div>
-            <div class="uid" id="uid">—</div>
-          </div>
-        </div>
         <div class="actions">
           <button id="checkin" class="btn">✦ 立馬打卡</button>
-          <button id="relogin" class="btn secondary">重新打卡</button>
         </div>
         <pre id="log" class="log" aria-live="polite"></pre>
       </section>
     </main>
 
     <footer>
-      <div>狀態：<span class="chip" id="lastResult">—</span></div>
+      狀態：<span class="chip" id="lastResult">—</span>
     </footer>
   </div>
 
-  <!-- ✅ 使用 module，可安全使用 await -->
+  <!-- ✅ 模組腳本 -->
   <script type="module">
     const LIFF_ID = "2008152857-OWRgNdDE";
     const GAS_EXEC = "https://script.google.com/macros/s/AKfycbwXaP-SUcDzKinUNZi88D8N2YEOt-2J5CuAyzeVySZcN175_Q2LJ35D6Tpir4AoInsQ/exec";
     const TOKEN = "test1106";
 
-    const $ = (s) => document.querySelector(s);
-    const logEl = $('#log');
-    const liffState = $('#liffState');
-    const loginState = $('#loginState');
-    const lastResult = $('#lastResult');
-    const btnCheck = $('#checkin');
-    const btnRelogin = $('#relogin');
-    const profileBox = $('#profile');
-    const avatar = $('#avatar');
-    const displayName = $('#displayName');
-    const uid = $('#uid');
+    const logEl = document.querySelector('#log');
+    const lastResult = document.querySelector('#lastResult');
+    const btnCheck = document.querySelector('#checkin');
+    const liffState = document.querySelector('#liffState');
 
-    function setChip(el, text, kind) {
+    const setChip = (el, text, kind) => {
       el.textContent = text;
       el.className = `chip ${kind || ''}`;
-    }
+    };
 
     (async function init() {
       setChip(liffState, '初始化中…', 'warn');
       try {
         await liff.init({ liffId: LIFF_ID });
         setChip(liffState, 'LIFF ready', 'ok');
-        if (!liff.isLoggedIn()) {
-          setChip(loginState, '未打卡', 'warn');
-        } else {
-          setChip(loginState, '已打卡', 'ok');
-          await paintProfile();
-        }
-      } catch (e) {
+        if (!liff.isLoggedIn()) liff.login({ redirectUri: location.href });
+      } catch {
         setChip(liffState, 'LIFF 失敗', 'err');
       }
     })();
 
-    async function paintProfile() {
-      try {
-        const p = await liff.getProfile();
-        if (p) {
-          displayName.textContent = p.displayName;
-          avatar.src = p.pictureUrl;
-          uid.textContent = p.userId.slice(0, 4) + '…' + p.userId.slice(-4);
-          profileBox.hidden = false;
-        }
-      } catch {}
-    }
-
-    async function getUserId() {
+    const getUserId = async () => {
       try {
         const p = await liff.getProfile();
         return p?.userId || liff.getDecodedIDToken()?.sub || null;
       } catch {
         return null;
       }
-    }
+    };
 
-    // ✅ 使用者版：僅顯示處理中、成功與時間
     async function checkIn() {
       btnCheck.disabled = true;
       setChip(lastResult, '處理中…', 'warn');
@@ -224,13 +165,12 @@
       const userId = await getUserId();
       if (!userId) {
         setChip(lastResult, '打卡失敗', 'err');
-        logEl.textContent = `${new Date().toLocaleString()} 打卡失敗，請重新開啟頁面再試`;
+        logEl.textContent = `${new Date().toLocaleString()} 無法取得使用者資料`;
         btnCheck.disabled = false;
         return;
       }
 
-      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
-
+      const url = `${GAS_EXEC}?token=${TOKEN}&timestamp=${Date.now()}&user=${userId}`;
       let done = false;
       const markSuccess = () => {
         if (done) return;
@@ -240,58 +180,18 @@
         logEl.textContent = `${ts.toLocaleString()} 打卡成功`;
       };
 
-      // 1) 以 <img> 發送（避免 ORB 造成錯誤視覺）；onload/onerror 都視為成功
       const img = new Image();
       img.onload = markSuccess;
-      img.onerror = markSuccess; // ORB/CORB 可能導致 error，但實際已成功送達
+      img.onerror = markSuccess; // ORB 也當成功
       img.src = url;
 
-      // 2) 平行 fire-and-forget：fetch(no-cors) + keepalive（不讀回應）
-      try {
-        await fetch(url, {
-          method: 'GET',
-          mode: 'no-cors',
-          cache: 'no-store',
-          redirect: 'follow',
-          credentials: 'omit',
-          keepalive: true,
-        });
-      } catch {}
-
-      // 3) 安全保險：若 1.5s 仍未標記，視為成功（使用者版體驗）
+      // 保險機制：1.5秒後仍沒回呼，也視為成功
       setTimeout(() => { if (!done) markSuccess(); }, 1500);
 
       setTimeout(() => (btnCheck.disabled = false), 800);
     }
 
-      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
-
-      const img = new Image();
-      img.onload = () => {
-        const ts = new Date();
-        setChip(lastResult, '打卡成功', 'ok');
-        logEl.textContent = `${ts.toLocaleString()} 打卡成功`;
-      };
-      img.onerror = () => {
-        const ts = new Date();
-        setChip(lastResult, '打卡失敗', 'err');
-        logEl.textContent = `${ts.toLocaleString()} 打卡失敗，請稍後重試`;
-      };
-      img.src = url;
-
-      setTimeout(() => (btnCheck.disabled = false), 600);
-    }
-
     btnCheck.addEventListener('click', checkIn);
-    btnRelogin.addEventListener('click', () => {
-      if (!liff.isLoggedIn()) {
-        liff.login({ scope: ['openid','profile'], redirectUri: location.href });
-      } else {
-        liff.logout();
-        setChip(loginState, '未打卡', 'warn');
-        setTimeout(() => liff.login({ scope: ['openid','profile'], redirectUri: location.href }), 200);
-      }
-    });
   </script>
 </body>
 </html>
