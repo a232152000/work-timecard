@@ -73,6 +73,11 @@
       display: grid;
       gap: 12px;
     }
+    .profile { display: flex; gap: 12px; align-items: center; }
+    .profile img { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); object-fit: cover; }
+    .profile .who { line-height: 1.25; }
+    .profile .who .name { font-weight: 600; }
+    .profile .who .uid { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
     .btn {
       border: 1px solid var(--brand);
       background: linear-gradient(180deg, var(--brand), var(--brand-2));
@@ -109,9 +114,14 @@
 
     <main>
       <section class="card">
-        <div class="actions">
-          <button id="checkin" class="btn">✦ 立馬打卡</button>
+        <div class="profile" id="profile" hidden>
+          <img id="avatar" alt="avatar" />
+          <div class="who">
+            <div class="name" id="displayName">—</div>
+            <div class="uid" id="uid">—</div>
+          </div>
         </div>
+        <button id="checkin" class="btn">✦ 立馬打卡</button>
         <pre id="log" class="log" aria-live="polite"></pre>
       </section>
     </main>
@@ -121,16 +131,21 @@
     </footer>
   </div>
 
-  <!-- ✅ 模組腳本 -->
+  <!-- ✅ 模組腳本：支援 await -->
   <script type="module">
     const LIFF_ID = "2008152857-OWRgNdDE";
     const GAS_EXEC = "https://script.google.com/macros/s/AKfycbwXaP-SUcDzKinUNZi88D8N2YEOt-2J5CuAyzeVySZcN175_Q2LJ35D6Tpir4AoInsQ/exec";
     const TOKEN = "test1106";
 
-    const logEl = document.querySelector('#log');
-    const lastResult = document.querySelector('#lastResult');
-    const btnCheck = document.querySelector('#checkin');
-    const liffState = document.querySelector('#liffState');
+    const $ = (s) => document.querySelector(s);
+    const logEl = $('#log');
+    const lastResult = $('#lastResult');
+    const btnCheck = $('#checkin');
+    const liffState = $('#liffState');
+    const profileBox = $('#profile');
+    const avatar = $('#avatar');
+    const displayName = $('#displayName');
+    const uid = $('#uid');
 
     const setChip = (el, text, kind) => {
       el.textContent = text;
@@ -142,21 +157,38 @@
       try {
         await liff.init({ liffId: LIFF_ID });
         setChip(liffState, 'LIFF ready', 'ok');
-        if (!liff.isLoggedIn()) liff.login({ redirectUri: location.href });
-      } catch {
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: location.href });
+          return;
+        }
+        await paintProfile();
+      } catch (e) {
         setChip(liffState, 'LIFF 失敗', 'err');
       }
     })();
 
-    const getUserId = async () => {
+    async function paintProfile() {
+      try {
+        const p = await liff.getProfile();
+        if (p) {
+          displayName.textContent = p.displayName;
+          avatar.src = p.pictureUrl;
+          uid.textContent = p.userId.slice(0, 4) + '…' + p.userId.slice(-4);
+          profileBox.hidden = false;
+        }
+      } catch {}
+    }
+
+    async function getUserId() {
       try {
         const p = await liff.getProfile();
         return p?.userId || liff.getDecodedIDToken()?.sub || null;
       } catch {
         return null;
       }
-    };
+    }
 
+    // 使用者版：只顯示處理中與成功時間
     async function checkIn() {
       btnCheck.disabled = true;
       setChip(lastResult, '處理中…', 'warn');
@@ -165,12 +197,13 @@
       const userId = await getUserId();
       if (!userId) {
         setChip(lastResult, '打卡失敗', 'err');
-        logEl.textContent = `${new Date().toLocaleString()} 無法取得使用者資料`;
+        logEl.textContent = `${new Date().toLocaleString()} 打卡失敗，請重新開啟頁面再試`;
         btnCheck.disabled = false;
         return;
       }
 
-      const url = `${GAS_EXEC}?token=${TOKEN}&timestamp=${Date.now()}&user=${userId}`;
+      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
+
       let done = false;
       const markSuccess = () => {
         if (done) return;
@@ -182,12 +215,10 @@
 
       const img = new Image();
       img.onload = markSuccess;
-      img.onerror = markSuccess; // ORB 也當成功
+      img.onerror = markSuccess; // ORB/CORB 可能導致 error，但實際已成功送達
       img.src = url;
 
-      // 保險機制：1.5秒後仍沒回呼，也視為成功
       setTimeout(() => { if (!done) markSuccess(); }, 1500);
-
       setTimeout(() => (btnCheck.disabled = false), 800);
     }
 
