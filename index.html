@@ -231,6 +231,32 @@
         return;
       }
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
+      log('→ 呼叫 /exec:', url);
+
+      try {
+        const res = await fetch(url, { method: 'GET', cache: 'no-store', redirect: 'follow', credentials: 'omit' });
+        if (!res.ok) {
+          log('❌ HTTP 狀態碼：', res.status, res.statusText);
+          setChip(lastResult, `伺服器錯誤 ${res.status}`, 'err');
+        } else {
+          const text = await res.text();
+          const ok = /\bOK\b/i.test(text);
+          if (ok) {
+            log('✔ 回傳內容：OK（打卡成功）');
+            setChip(lastResult, '打卡成功', 'ok');
+          } else {
+            log('⚠ 回傳非預期，原文：', text.slice(0, 200));
+            setChip(lastResult, '異常回傳', 'warn');
+          }
+        }
+      } catch (err) {
+        log('⚠ 連線失敗：', err?.message || err);
+        setChip(lastResult, '傳送失敗', 'err');
+      } finally {
+        setTimeout(() => (btnCheck.disabled = false), 600);
+      }
+    }
+      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
       log('→ 送出 beacon:', url);
       const img = new Image();
       img.onload = () => { log('✔ 已送出'); setChip(lastResult, '已送出', 'ok'); };
