@@ -231,6 +231,41 @@
 
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
 
+      let done = false;
+      const markSuccess = () => {
+        if (done) return;
+        done = true;
+        const ts = new Date();
+        setChip(lastResult, '打卡成功', 'ok');
+        logEl.textContent = `${ts.toLocaleString()} 打卡成功`;
+      };
+
+      // 1) 以 <img> 發送（避免 ORB 造成錯誤視覺）；onload/onerror 都視為成功
+      const img = new Image();
+      img.onload = markSuccess;
+      img.onerror = markSuccess; // ORB/CORB 可能導致 error，但實際已成功送達
+      img.src = url;
+
+      // 2) 平行 fire-and-forget：fetch(no-cors) + keepalive（不讀回應）
+      try {
+        await fetch(url, {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          redirect: 'follow',
+          credentials: 'omit',
+          keepalive: true,
+        });
+      } catch {}
+
+      // 3) 安全保險：若 1.5s 仍未標記，視為成功（使用者版體驗）
+      setTimeout(() => { if (!done) markSuccess(); }, 1500);
+
+      setTimeout(() => (btnCheck.disabled = false), 800);
+    }
+
+      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
+
       const img = new Image();
       img.onload = () => {
         const ts = new Date();
