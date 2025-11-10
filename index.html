@@ -233,6 +233,35 @@
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
       log('→ 呼叫 /exec:', url);
 
+      // 方案A：<img> beacon（不讀回應），可避開 ORB；onload 視為成功。
+      let settled = false;
+      const img = new Image();
+      img.onload = () => {
+        settled = true;
+        log('✔ Beacon onload（視為打卡成功）');
+        setChip(lastResult, '打卡成功', 'ok');
+      };
+      img.onerror = () => {
+        if (!settled) {
+          log('⚠ Beacon onerror');
+        }
+      };
+      img.src = url;
+
+      // 方案B：fetch 僅做背景補充紀錄。Chrome 可能因 ORB 封鎖回應
+      // （net::ERR_BLOCKED_BY_ORB）。用 no-cors 避免報錯，但無法讀 body。
+      try {
+        await fetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-store', redirect: 'follow', credentials: 'omit' });
+        log('ℹ︎ fetch(no-cors) 已送出（回應可能被瀏覽器 ORB 隱藏）');
+      } catch (err) {
+        log('ℹ︎ fetch 可能被 ORB 攔截：', err?.message || err);
+      }
+
+      setTimeout(() => (btnCheck.disabled = false), 600);
+    }
+      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
+      log('→ 呼叫 /exec:', url);
+
       try {
         const res = await fetch(url, { method: 'GET', cache: 'no-store', redirect: 'follow', credentials: 'omit' });
         if (!res.ok) {
@@ -240,7 +269,7 @@
           setChip(lastResult, `伺服器錯誤 ${res.status}`, 'err');
         } else {
           const text = await res.text();
-          const ok = /\bOK\b/i.test(text);
+          const ok = /OK/i.test(text);
           if (ok) {
             log('✔ 回傳內容：OK（打卡成功）');
             setChip(lastResult, '打卡成功', 'ok');
