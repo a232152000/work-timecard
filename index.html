@@ -155,7 +155,8 @@
     </footer>
   </div>
 
-  <script>
+  <!-- ✅ 模組腳本，可安全使用 await -->
+  <script type="module">
     const LIFF_ID = "2008152857-OWRgNdDE";
     const GAS_EXEC = "https://script.google.com/macros/s/AKfycbwXaP-SUcDzKinUNZi88D8N2YEOt-2J5CuAyzeVySZcN175_Q2LJ35D6Tpir4AoInsQ/exec";
     const TOKEN = "test1106";
@@ -221,7 +222,7 @@
       }
     }
 
-    // ✅ 修正版：Beacon 為主、fetch(no-cors) 補充紀錄
+    // ✅ Beacon 為主、fetch(no-cors) 補充
     async function checkIn() {
       btnCheck.disabled = true;
       const userId = await getUserId();
@@ -235,7 +236,6 @@
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
       log('→ 呼叫 /exec:', url);
 
-      // 方案A：<img> beacon（不讀回應），可避開 ORB；onload 視為成功。
       let settled = false;
       const img = new Image();
       img.onload = () => {
@@ -251,7 +251,6 @@
       };
       img.src = url;
 
-      // 方案B：fetch(no-cors) 僅做背景補充紀錄（可能被 ORB 隱藏回應）
       try {
         await fetch(url, {
           method: 'GET',
@@ -271,11 +270,11 @@
     btnCheck.addEventListener('click', checkIn);
     btnRelogin.addEventListener('click', () => {
       if (!liff.isLoggedIn()) {
-        liff.login({ scope: ['openid','profile'], redirectUri: location.href });
+        liff.login({ scope: ['openid', 'profile'], redirectUri: location.href });
       } else {
         liff.logout();
         setChip(loginState, '未打卡', 'warn');
-        setTimeout(() => liff.login({ scope: ['openid','profile'], redirectUri: location.href }), 200);
+        setTimeout(() => liff.login({ scope: ['openid', 'profile'], redirectUri: location.href }), 200);
       }
     });
   </script>
