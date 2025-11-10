@@ -221,6 +221,7 @@
       }
     }
 
+    // ✅ 修正版：Beacon 為主、fetch(no-cors) 補充紀錄
     async function checkIn() {
       btnCheck.disabled = true;
       const userId = await getUserId();
@@ -230,6 +231,7 @@
         btnCheck.disabled = false;
         return;
       }
+
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
       log('→ 呼叫 /exec:', url);
 
@@ -244,54 +246,26 @@
       img.onerror = () => {
         if (!settled) {
           log('⚠ Beacon onerror');
+          setChip(lastResult, '傳送失敗', 'err');
         }
       };
       img.src = url;
 
-      // 方案B：fetch 僅做背景補充紀錄。Chrome 可能因 ORB 封鎖回應
-      // （net::ERR_BLOCKED_BY_ORB）。用 no-cors 避免報錯，但無法讀 body。
+      // 方案B：fetch(no-cors) 僅做背景補充紀錄（可能被 ORB 隱藏回應）
       try {
-        await fetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-store', redirect: 'follow', credentials: 'omit' });
-        log('ℹ︎ fetch(no-cors) 已送出（回應可能被瀏覽器 ORB 隱藏）');
+        await fetch(url, {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          redirect: 'follow',
+          credentials: 'omit',
+        });
+        log('ℹ︎ fetch(no-cors) 已送出（回應可能被 ORB 隱藏）');
       } catch (err) {
         log('ℹ︎ fetch 可能被 ORB 攔截：', err?.message || err);
       }
 
       setTimeout(() => (btnCheck.disabled = false), 600);
-    }
-      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
-      log('→ 呼叫 /exec:', url);
-
-      try {
-        const res = await fetch(url, { method: 'GET', cache: 'no-store', redirect: 'follow', credentials: 'omit' });
-        if (!res.ok) {
-          log('❌ HTTP 狀態碼：', res.status, res.statusText);
-          setChip(lastResult, `伺服器錯誤 ${res.status}`, 'err');
-        } else {
-          const text = await res.text();
-          const ok = /OK/i.test(text);
-          if (ok) {
-            log('✔ 回傳內容：OK（打卡成功）');
-            setChip(lastResult, '打卡成功', 'ok');
-          } else {
-            log('⚠ 回傳非預期，原文：', text.slice(0, 200));
-            setChip(lastResult, '異常回傳', 'warn');
-          }
-        }
-      } catch (err) {
-        log('⚠ 連線失敗：', err?.message || err);
-        setChip(lastResult, '傳送失敗', 'err');
-      } finally {
-        setTimeout(() => (btnCheck.disabled = false), 600);
-      }
-    }
-      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
-      log('→ 送出 beacon:', url);
-      const img = new Image();
-      img.onload = () => { log('✔ 已送出'); setChip(lastResult, '已送出', 'ok'); };
-      img.onerror = () => { log('⚠ 傳送失敗'); setChip(lastResult, '傳送失敗', 'err'); };
-      img.src = url;
-      setTimeout(() => btnCheck.disabled = false, 600);
     }
 
     btnCheck.addEventListener('click', checkIn);
