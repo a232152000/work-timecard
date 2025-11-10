@@ -155,8 +155,7 @@
     </footer>
   </div>
 
-  <!-- ✅ 模組腳本，可安全使用 await -->
-  <script type="module">
+  <script>
     const LIFF_ID = "2008152857-OWRgNdDE";
     const GAS_EXEC = "https://script.google.com/macros/s/AKfycbwXaP-SUcDzKinUNZi88D8N2YEOt-2J5CuAyzeVySZcN175_Q2LJ35D6Tpir4AoInsQ/exec";
     const TOKEN = "test1106";
@@ -222,20 +221,44 @@
       }
     }
 
-    // ✅ Beacon 為主、fetch(no-cors) 補充
+    // ✅ 修正版：Beacon 為主、fetch(no-cors) 補充紀錄
     async function checkIn() {
       btnCheck.disabled = true;
+      // 顯示處理中...
+      setChip(lastResult, '處理中…', 'warn');
+      logEl.textContent = `${new Date().toLocaleString()} 處理中…`;
+
       const userId = await getUserId();
       if (!userId) {
-        log('❌ 無法取得 userId');
         setChip(lastResult, '未取得 userId', 'err');
+        logEl.textContent = `${new Date().toLocaleString()} 打卡失敗，請重新開啟頁面再試`;
         btnCheck.disabled = false;
         return;
       }
 
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
+
+      // 僅用 <img> beacon，成功即顯示打卡成功 + 時間；不顯示技術性訊息
+      const img = new Image();
+      img.onload = () => {
+        const ts = new Date();
+        setChip(lastResult, '打卡成功', 'ok');
+        logEl.textContent = `${ts.toLocaleString()} 打卡成功`;
+      };
+      img.onerror = () => {
+        const ts = new Date();
+        setChip(lastResult, '打卡失敗', 'err');
+        logEl.textContent = `${ts.toLocaleString()} 打卡失敗，請稍後重試`;
+      };
+      img.src = url;
+
+      setTimeout(() => (btnCheck.disabled = false), 600);
+    }
+
+      const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
       log('→ 呼叫 /exec:', url);
 
+      // 方案A：<img> beacon（不讀回應），可避開 ORB；onload 視為成功。
       let settled = false;
       const img = new Image();
       img.onload = () => {
@@ -251,6 +274,7 @@
       };
       img.src = url;
 
+      // 方案B：fetch(no-cors) 僅做背景補充紀錄（可能被 ORB 隱藏回應）
       try {
         await fetch(url, {
           method: 'GET',
@@ -270,11 +294,11 @@
     btnCheck.addEventListener('click', checkIn);
     btnRelogin.addEventListener('click', () => {
       if (!liff.isLoggedIn()) {
-        liff.login({ scope: ['openid', 'profile'], redirectUri: location.href });
+        liff.login({ scope: ['openid','profile'], redirectUri: location.href });
       } else {
         liff.logout();
         setChip(loginState, '未打卡', 'warn');
-        setTimeout(() => liff.login({ scope: ['openid', 'profile'], redirectUri: location.href }), 200);
+        setTimeout(() => liff.login({ scope: ['openid','profile'], redirectUri: location.href }), 200);
       }
     });
   </script>
