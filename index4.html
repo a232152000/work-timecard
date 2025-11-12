@@ -208,13 +208,13 @@
       const url = `${GAS_EXEC}?token=${encodeURIComponent(TOKEN)}&timestamp=${Date.now()}&user=${encodeURIComponent(userId)}`;
 
       let done = false;
-      const markSuccess = () => {
+      const markSuccess = async () => {
         if (done) return;
         done = true;
         const ts = new Date();
         setChip(lastResult, '打卡成功', 'ok');
         logEl.textContent = `${ts.toLocaleString()} 打卡成功`;
-
+      
         try {
           await liff.sendMessages([
             {
@@ -227,6 +227,7 @@
           console.error('送出訊息失敗', err);
         }
       };
+
 
       const img = new Image();
       img.onload = markSuccess;
