@@ -107,9 +107,9 @@
 <body>
   <div class="app">
     <header>
-      <div class="logo">LIFF</div>
+      <div class="logo">打起來</div>
       <div class="title">
-        <h1>專屬打卡系統</h1>
+        <h1>專屬訂製打卡</h1>
         <p>到公司了還不立馬打卡，必須打起來！</p>
       </div>
       <span id="liffState" class="chip warn">未初始化</span>
@@ -214,6 +214,18 @@
         const ts = new Date();
         setChip(lastResult, '打卡成功', 'ok');
         logEl.textContent = `${ts.toLocaleString()} 打卡成功`;
+
+        try {
+          await liff.sendMessages([
+            {
+              type: 'text',
+              text: `✅ 打卡成功！\n時間：${ts.toLocaleString()}\n恭喜你開始賺取奶粉/罐罐/美食金`
+            }
+          ]);
+          console.log('訊息已送出');
+        } catch (err) {
+          console.error('送出訊息失敗', err);
+        }
       };
 
       const img = new Image();
