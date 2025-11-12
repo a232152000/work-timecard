@@ -107,7 +107,7 @@
 <body>
   <div class="app">
     <header>
-      <div class="logo">打起來</div>
+      <div class="logo">打卡</div>
       <div class="title">
         <h1>專屬訂製打卡</h1>
         <p>到公司了還不立馬打卡，必須打起來！</p>
@@ -219,7 +219,7 @@
           await liff.sendMessages([
             {
               type: 'text',
-              text: `✅ 賺錢囉！\n時間：${ts.toLocaleString()}\n`
+              text: `✅ 賺錢囉！打卡時間：${ts.toLocaleString()}`
             }
           ]);
           console.log('訊息已送出');
